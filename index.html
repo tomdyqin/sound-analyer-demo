@@ -142,7 +142,10 @@
 				var gradient = canvasCtx.createLinearGradient(0, 0, 0, 200);
 						gradient.addColorStop(1, '#0f0');
 						gradient.addColorStop(0.5, '#ff0');
-						gradient.addColorStop(0, '#f00');
+						gradient.addColorStop(0, '#f00');					
+					canvasCtx.strokeStyle = gradient;//渐变
+					canvasCtx.fillStyle = '#000';
+
 				//音源选择切换
 				mediaSelect.onchange = function() {
 					window.cancelAnimationFrame(drawVisual);
@@ -241,10 +244,8 @@
 							drawVisual = requestAnimationFrame(draw);
 							analyser.getByteTimeDomainData(dataArray);
 
-							canvasCtx.fillStyle = '#000';
 							canvasCtx.fillRect(0, 0, WIDTH, HEIGHT);
 							canvasCtx.lineWidth = 2;
-							canvasCtx.strokeStyle = gradient;
 							canvasCtx.beginPath();
 
 							var sliceWidth = WIDTH * 1.0 / bufferLength;
@@ -283,7 +284,6 @@
 							drawVisual = requestAnimationFrame(draw);
 							canvasCtx.clearRect(0, 0, WIDTH, HEIGHT);
 							analyser.getByteTimeDomainData(dataArray);
-							 canvasCtx.strokeStyle = gradient;//渐变
 							for(var i = 0; i < circles.length; i++) {
 								var v = dataArray[i] / 128.0;
 								var y = v * HEIGHT / 2;
