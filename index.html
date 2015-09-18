@@ -243,7 +243,8 @@
 						draw = function() {
 							drawVisual = requestAnimationFrame(draw);
 							analyser.getByteTimeDomainData(dataArray);
-
+							
+							canvasCtx.fillStyle = '#000';
 							canvasCtx.fillRect(0, 0, WIDTH, HEIGHT);
 							canvasCtx.lineWidth = 2;
 							canvasCtx.beginPath();
@@ -304,10 +305,6 @@
 						var dataArray = new Uint8Array(bufferLength);
 						canvasCtx.clearRect(0, 0, WIDTH, HEIGHT);
 
-						var gradient = canvasCtx.createLinearGradient(0, 0, 0, 200);
-						gradient.addColorStop(1, '#0f0');
-						gradient.addColorStop(0.5, '#ff0');
-						gradient.addColorStop(0, '#f00');
 						var barWidth = 10;
 				        var gap = 2; //间距
 				        var capHeight = 2;//顶部高度
