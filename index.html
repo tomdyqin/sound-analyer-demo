@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+		<meta name="viewport" content="width=device-width">
+		<title>
+			Sounds Analyer Demo
+		</title>
+		<style>
+			*{font-size: 14px;font-family: 'Microsoft Yahei';line-height: 1.5;}
+			h2{font-size: 20px;}
+			.wrapper{width: 620px;margin:0 auto;padding-top:30px;overflow: hidden;}
+			.api{text-align: right;font-weight: normal;}
+			.api span{float:right;display: inline-block;line-height: 30px;margin-left: 20px;padding-left: 10px;position: relative;color:#999;}
+			.api span:after{content:'?';position: absolute;left: 0;top:0;}
+			.api span.checked{color:#64bd63}
+			.api span.false{color:red}
+			.api span.false:after{content: 'x';}
+			.api span.checked:after{content: '√';}
+			.tips{color:#999;}
+			.canvas{display: block;padding:10px;background: #000;margin-bottom: 20px;position: relative;}
+			canvas{position: relative;z-index: 1;}
+			.switch{margin-left: 20px;}
+			label{vertical-align: middle;font-size: 14px;}
+			.switch input {width:52px;height:31px;position:relative;border:1px solid #dfdfdf;background-color:#fdfdfd;box-shadow:#dfdfdf 0 0 0 0 inset;border-radius:20px;background-clip:content-box;display:inline-block;vertical-align:middle;-webkit-appearance:none;user-select:none;outline:none}
+			.switch input:before{content:'';width:29px;height:29px;position:absolute;top:0px;left:0;border-radius:20px;background-color:#fff;box-shadow:0 1px 3px rgba(0,0,0,0.4)}
+			.switch input:checked{border-color:#64bd63;box-shadow:#64bd63 0 0 0 16px inset;background-color:#64bd63}
+			.switch input:checked:before{left:21px}
+			select{margin-right: 10px;}
+			audio{visibility: hidden;}
+			#ani{position: absolute;width: 100%;height: 100%;top:0;left:0;overflow: hidden;background: #fff;}
+			.circle {border-radius:100%; background:rgba(0,0,0,.1);  box-shadow:0 0 2px 2px rgb(0,255,0);margin: auto; position: absolute; top: 0; left: 0; bottom: 0; right: 0; -webkit-transition:0.1s ease all;}
+			.logo-container, .logo, .container, .clone{width: 200px;height: 200px;position: absolute;top: 0; bottom: 0;left: 0; right: 0;margin: auto;}
+			.logo-container, .clone {background: black;border-radius: 50%;}
+			.mask {overflow: hidden;will-change: transform;position: absolute;transform: none;top: 0; left: 0;}
+		</style>
+	</head>
+	<body>
+		<div class="wrapper">
+			<h2>Sounds Analyer Demo <span class="api"><span id="apiAudio">AudioContextAPI</span><span id="apiMedia">getUserMediaAPI</span></span></h2>
+			<p class="tips"></p>
+			<div class="canvas">
+				<canvas id="canvas" width="600" height="300">
+					浏览器不支持啦=.=
+				</canvas>
+
+			</div>			
+			
+
+			<form class="controls">
+				<label for="media">
+					音源：
+				</label>
+				<select id="media" name="media">
+					<option value="file" selected>
+						file
+					</option>
+					<option value="mic">
+						麦克风
+					</option>
+				</select>
+				<label for="visual">
+					图形化：
+				</label>
+				<select id="visual" name="visual">
+					<option value="wave1">
+						波纹
+					</option>
+					<option value="circle">
+						环形图
+					</option>
+					<option value="bar" selected>
+						条形图
+					</option>
+				</select>				
+				<label class="switch"><span>静音</span><input id="mute" type="checkbox"> </label>
+			</form>
+			<dl class="todo">
+				<dt>TODO:</dt>
+				<dd>1.声音的来源可以是麦克风或者音频文件。</dd>
+				<dd>2.兼容性有待提高，暂时可在一些活动中作为惊喜，如喊一声密码、口号什么的</dd>
+				<dd>3.现在只有图形化展示，既然获取了数据，还可以对数据进行操作，比如过滤（高频低频）、变声等</dd>
+				<dd>4.可以考虑结合css3动画</dd>
+				<dd>5.getUserMedia的另一个用法是摄像头数据的获取，同样，可以做的还很多。</dd>
+			</dl>
+			<dl class="todo">
+				<dt>猜想产品1:</dt>
+				<dd>1.一句话性格(录音一句话下来然后分析数据，大数据出一个结果)，当然，还可以是别的一句话xx</dd>
+				<dd>2.芝麻开门（声音密码游戏，特定的发音然后对比数据中的关键频率/时域）</dd>
+				<dd>3.变声器（对数据过滤，改变声音，比如大家都变声让别人猜是谁）</dd>
+				<dd>...</dd>
+			</dl>
+			<dl class="todo">
+				<dt>猜想产品2:</dt>
+				<dd>1.拍照（还可以和canvas结合，做相册，在线编辑等）</dd>
+				<dd>2.可视穿戴，比如穿衣啊，带饰品的效果</dd>
+				<dd>...</dd>
+			</dl>
+			<div id="audiobox"></div>
+		</div>
+		<script type="text/javascript">
+			(function() {
+				//api
+				var apiAudio = document.querySelector('#apiAudio');
+				var apiMedia = document.querySelector('#apiMedia');
+				var tips = document.querySelector('.tips');
+				var ani = document.getElementById('ani');
+				navigator.getUserMedia = (navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia);
+				window.AudioContext = (window.AudioContext || window.webkitAudioContext || window.mozAudioContext);
+				window.requestAnimationFrame = window.requestAnimationFrame || window.webkitRequestAnimationFrame;
+				try {
+					audioCtx = new AudioContext();
+					console.log('浏览器支持AudioContext');
+					apiAudio.className = "checked";
+				} catch(e) {
+					console.log('浏览器不支持AudioContext', e);
+					apiAudio.className = "false";
+				};
+
+				var source;
+				var stream;
+				var mute = document.querySelector('#mute');
+
+				//创建设置各种节点
+				var analyser = audioCtx.createAnalyser();
+				analyser.minDecibels = -90;
+				analyser.maxDecibels = -10;
+				analyser.smoothingTimeConstant = 0.85;
+
+				var distortion = audioCtx.createWaveShaper();
+				var gainNode = audioCtx.createGain();
+
+
+				//设置canvas用于图像化
+				var canvas = document.getElementById('canvas');
+				var canvasCtx = canvas.getContext("2d");
+				var visualSelect = document.getElementById("visual");
+				var mediaSelect = document.getElementById("media");
+				var audioDom = document.getElementById('audiobox');
+				var drawVisual;
+				var gradient = canvasCtx.createLinearGradient(0, 0, 0, 200);
+						gradient.addColorStop(1, '#0f0');
+						gradient.addColorStop(0.5, '#ff0');
+						gradient.addColorStop(0, '#f00');
+				//音源选择切换
+				mediaSelect.onchange = function() {
+					window.cancelAnimationFrame(drawVisual);
+					mediaChange()
+				}
+				function loadFile(){
+					var dom = document.createElement('audio');
+					dom.setAttribute('id','audio');
+					dom.setAttribute('src','seeyouagain.mp3');
+					dom.setAttribute('loop','true');
+					dom.setAttribute('controls','');
+					audioDom.appendChild(dom);
+					audio.play();
+				}
+				function stop(){
+					if (document.getElementById('audio')) {
+						audioDom.removeChild(document.getElementById('audio'))
+					};
+					if(source) source.disconnect();
+					tips.innerHTML = '';
+				}
+				function mediaChange(){
+					stop();
+					var mediaSetting = mediaSelect.value;
+					console.log(mediaSetting);
+					if (mediaSetting == "file") {
+						loadFile();
+						//得到数据源
+						source=audioCtx.createMediaElementSource(audio);
+						//连接节点
+						source.connect(analyser);
+						analyser.connect(distortion);
+						distortion.connect(gainNode);
+						gainNode.connect(audioCtx.destination);
+					}
+					if(mediaSetting == "mic") {
+						//开始监听			
+						if (navigator.getUserMedia) {
+							console.log('浏览器支持getUserMedia');
+							apiMedia.className = "checked";
+							navigator.getUserMedia(
+							// 我们只获取麦克风数据，这里还可以设置video为true来获取摄像头数据
+							{
+								video: false,
+								audio: true
+							},
+							onSccess, onErr)
+						} else {
+							console.log('浏览器不支持getUserMedia');
+							apiMedia.className = "false";
+						};
+					}
+					visualize();
+				}
+				mediaChange();
+
+				// Success callback
+				function onSccess(stream) {
+					tips.innerHTML = '';
+					console.log('onSccess');
+					//将声音输入对像
+					source = audioCtx.createMediaStreamSource(stream);
+					//连接节点
+					source.connect(analyser);
+					analyser.connect(distortion);
+					distortion.connect(gainNode);
+					gainNode.connect(audioCtx.destination);
+
+				}
+				// Error callback
+				function onErr(err) {
+					//PERMISSION_DENIED 用户拒绝
+					//NOT_SUPPORTED_ERROR：浏览器不支持指定的媒体类型。
+					//MANDATORY_UNSATISHIED_ERROR：指定的媒体类型未收到媒体流
+					console.log('error: ' + err);
+					tips.innerHTML = 'error: ' + err;
+				}
+
+				//图形化展示
+				function visualize() {
+					WIDTH = canvas.width;
+					HEIGHT = canvas.height;
+
+					var visualSetting = visualSelect.value;
+					console.log(visualSetting);
+
+					//波纹1
+					if (visualSetting == "wave1") {
+						analyser.fftSize = 2048;
+						var bufferLength = analyser.fftSize;
+						console.log(bufferLength);
+						var dataArray = new Uint8Array(bufferLength);
+						canvasCtx.clearRect(0, 0, WIDTH, HEIGHT);
+
+						draw = function() {
+							drawVisual = requestAnimationFrame(draw);
+							analyser.getByteTimeDomainData(dataArray);
+
+							canvasCtx.fillStyle = '#000';
+							canvasCtx.fillRect(0, 0, WIDTH, HEIGHT);
+							canvasCtx.lineWidth = 2;
+							canvasCtx.strokeStyle = gradient;
+							canvasCtx.beginPath();
+
+							var sliceWidth = WIDTH * 1.0 / bufferLength;
+							var x = 0;
+
+							for (var i = 0; i < bufferLength; i++) {
+								var v = dataArray[i] / 128.0;
+								var y = v * HEIGHT / 2;
+								if (i === 0) {
+									canvasCtx.moveTo(x, y);
+								} else {
+									canvasCtx.lineTo(x, y);
+								}
+								x += sliceWidth;
+							}
+							canvasCtx.lineTo(canvas.width, canvas.height / 2);
+							canvasCtx.stroke();
+						};
+						draw();
+					}
+					//circle
+					else if (visualSetting == "circle") {
+						analyser.fftSize = 256;
+						var bufferLength = analyser.fftSize;
+						var dataArray = new Uint8Array(bufferLength);
+						var count = dataArray.length
+						var circles = [];
+						var circleMaxWidth = (HEIGHT*0.66) >> 0;
+						canvasCtx.clearRect(0, 0, WIDTH, HEIGHT);
+						canvasCtx.lineWidth = 1;
+
+						for(var i = 0; i < count; i++ ){					
+							circles.push(i/count*circleMaxWidth)
+						}
+						draw = function() {
+							drawVisual = requestAnimationFrame(draw);
+							canvasCtx.clearRect(0, 0, WIDTH, HEIGHT);
+							analyser.getByteTimeDomainData(dataArray);
+							 canvasCtx.strokeStyle = gradient;//渐变
+							for(var i = 0; i < circles.length; i++) {
+								var v = dataArray[i] / 128.0;
+								var y = v * HEIGHT / 2;
+								var circle = circles[i];
+								canvasCtx.beginPath();
+								canvasCtx.arc(WIDTH/2,HEIGHT/2, y/2, Math.PI * 2, false);
+								canvasCtx.stroke()
+							}						
+							
+						};
+						draw();					
+					}
+					//柱形条
+					else if (visualSetting == "bar") {
+						analyser.fftSize = 256;
+						var bufferLength = analyser.frequencyBinCount;
+						console.log(bufferLength);
+						var dataArray = new Uint8Array(bufferLength);
+						canvasCtx.clearRect(0, 0, WIDTH, HEIGHT);
+
+						var gradient = canvasCtx.createLinearGradient(0, 0, 0, 200);
+						gradient.addColorStop(1, '#0f0');
+						gradient.addColorStop(0.5, '#ff0');
+						gradient.addColorStop(0, '#f00');
+						var barWidth = 10;
+				        var gap = 2; //间距
+				        var capHeight = 2;//顶部高度
+				        var capStyle = '#fff';
+				        var barNum = WIDTH / (barWidth + gap); //bar个数
+				        var capYPositionArray = [];
+						var step = Math.round(dataArray.length / barNum); 
+
+						draw = function() {
+							drawVisual = requestAnimationFrame(draw);
+							analyser.getByteFrequencyData(dataArray);
+						    canvasCtx.clearRect(0, 0, WIDTH, HEIGHT);
+
+						    for (var i = 0; i < barNum; i++) {
+						        var value = dataArray[i * step];
+						        if (capYPositionArray.length < Math.round(barNum)) {
+						            capYPositionArray.push(value);
+						        };
+						        canvasCtx.fillStyle = capStyle;
+						        //顶端帽子
+						        if (value < capYPositionArray[i]) {
+						            canvasCtx.fillRect(i * 12, HEIGHT - (--capYPositionArray[i]), barWidth, capHeight);
+						        } else {
+						            canvasCtx.fillRect(i * 12, HEIGHT - value, barWidth, capHeight);
+						            capYPositionArray[i] = value;
+						        };
+						        canvasCtx.fillStyle = gradient;//渐变
+						        canvasCtx.fillRect(i * 12 , HEIGHT - value + capHeight, barWidth, HEIGHT-2); //绘制bar
+						    }
+						};
+						draw();
+					}
+				}
+
+				//图形化切换
+				visualSelect.onchange = function() {
+					window.cancelAnimationFrame(drawVisual);
+					visualize();
+				}
+
+				// 音量
+				mute.onclick = voiceMute;
+				function voiceMute() {
+					if (mute.checked == true) {
+						gainNode.gain.value = 0;
+					} else {
+						gainNode.gain.value = 1;
+					}
+				}
+			})();
+		</script>
+	</body>
+</html>
